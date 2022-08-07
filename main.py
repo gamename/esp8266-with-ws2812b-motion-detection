@@ -1,3 +1,6 @@
+#
+# This is a simple configuration to drive a ws2812b strip of LEDs using a esp2866 microcontroller
+#
 from machine import Pin
 from neopixel import NeoPixel
 from time import sleep
@@ -23,7 +26,7 @@ PIN_D3 = 0
 # GPIO 14 = D5 on board
 PIN_D5 = 14
 
-SLEEP_MINUTES = 1
+SLEEP_MINUTES = 3
 SLEEP_INTERVAL = 60 * SLEEP_MINUTES
 NUM_PIXELS = 30
 ON = (255, 255, 255)
