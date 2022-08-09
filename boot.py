@@ -33,7 +33,7 @@ LIGHTS_ON = (255, 255, 255)
 LIGHTS_OFF = (0, 0, 0)
 led = Pin(PIN_D3, Pin.OUT)
 np = NeoPixel(led, NUM_PIXELS)
-np.fill(OFF)
+np.fill(LIGHTS_OFF)
 np.write()
 
 pir = Pin(PIN_D5, Pin.IN)
