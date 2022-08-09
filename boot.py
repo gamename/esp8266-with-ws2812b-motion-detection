@@ -29,8 +29,8 @@ PIN_D5 = 14
 SLEEP_MINUTES = 3
 SLEEP_INTERVAL = 60 * SLEEP_MINUTES
 NUM_PIXELS = 55
-ON = (255, 255, 255)
-OFF = (0, 0, 0)
+LIGHTS_ON = (255, 255, 255)
+LIGHTS_OFF = (0, 0, 0)
 led = Pin(PIN_D3, Pin.OUT)
 np = NeoPixel(led, NUM_PIXELS)
 np.fill(OFF)
@@ -43,10 +43,10 @@ pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 while True:
     if motion:
         # print('Motion detected! Interrupt caused by:', interrupt_pin)
-        np.fill(ON)
+        np.fill(LIGHTS_ON)
         np.write()
         sleep(SLEEP_INTERVAL)
-        np.fill(OFF)
+        np.fill(LIGHTS_OFF)
         np.write()
         # print('Motion stopped!')
         motion = False
