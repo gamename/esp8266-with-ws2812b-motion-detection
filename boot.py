@@ -10,7 +10,7 @@ from neopixel import NeoPixel
 motion = False
 interrupt_pin = None
 
-# Turn OFF the Wi-Fi signal
+# Turn Wi-Fi OFF
 ap_if = network.WLAN(network.AP_IF)
 ap_if.active(False)
 
@@ -30,7 +30,7 @@ PIN_D5 = 14
 SLEEP_MINUTES = 3
 SLEEP_INTERVAL = 60 * SLEEP_MINUTES
 NUM_PIXELS = 55
-LIGHTS_ON = (16, 16, 16)
+LIGHTS_ON = (255, 255, 255)
 LIGHTS_OFF = (0, 0, 0)
 led = Pin(PIN_D3, Pin.OUT)
 strip = NeoPixel(led, NUM_PIXELS)
@@ -43,9 +43,8 @@ pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 
 while True:
     if motion:
-        for i in range(0, NUM_PIXELS, 2):
-            strip[i] = LIGHTS_ON
-            strip.write()
+        strip.fill(LIGHTS_ON)
+        strip.write()
         sleep(SLEEP_INTERVAL)
         strip.fill(LIGHTS_OFF)
         strip.write()
