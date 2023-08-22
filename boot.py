@@ -43,12 +43,10 @@ pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 
 while True:
     if motion:
-        # print('Motion detected! Interrupt caused by:', interrupt_pin)
         for i in range(0, NUM_PIXELS, 2):
             strip[i] = LIGHTS_ON
             strip.write()
         sleep(SLEEP_INTERVAL)
         strip.fill(LIGHTS_OFF)
         strip.write()
-        # print('Motion stopped!')
         motion = False
