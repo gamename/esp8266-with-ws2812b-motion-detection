@@ -10,7 +10,7 @@ from neopixel import NeoPixel
 motion = False
 interrupt_pin = None
 
-# Turn OFF the wifi signal
+# Turn OFF the Wi-Fi signal
 ap_if = network.WLAN(network.AP_IF)
 ap_if.active(False)
 
