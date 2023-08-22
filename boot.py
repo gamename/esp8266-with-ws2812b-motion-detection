@@ -1,5 +1,6 @@
 #
-# This is a simple configuration to drive a ws2812b strip of LEDs using a esp2866 microcontroller
+# This is a simple configuration to drive a ws2812b strip of LEDs
+# using an esp2866 microcontroller
 #
 from time import sleep
 
@@ -7,12 +8,21 @@ import network
 from machine import Pin
 from neopixel import NeoPixel
 
+import secrets
+
 motion = False
 interrupt_pin = None
 
-# Turn Wi-Fi OFF
-ap_if = network.WLAN(network.AP_IF)
-ap_if.active(False)
+
+def do_connect():
+    station_if = network.WLAN(network.STA_IF)
+    if not station_if.isconnected():
+        print('connecting to network...')
+        station_if.active(True)
+        station_if.connect('disconnected', secrets.password)
+        while not station_if.isconnected():
+            pass
+    print('network config:', station_if.ifconfig())
 
 
 def handle_interrupt(pin):
@@ -40,6 +50,8 @@ strip.write()
 pir = Pin(PIN_D5, Pin.IN)
 
 pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
+
+do_connect()
 
 while True:
     if motion:
