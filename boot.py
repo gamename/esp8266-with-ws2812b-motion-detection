@@ -1,8 +1,8 @@
 #
-# This is a simple configuration to drive a ws2812b strip of LEDs
-# using an esp2866 microcontroller
 #
-from time import sleep
+#
+#
+import time
 
 import network
 from machine import Pin
@@ -13,16 +13,32 @@ import secrets
 motion = False
 interrupt_pin = None
 
+# GPIO 14 = D5 on board
+MOTION_DETECTOR_PIN = 14
 
-def do_connect():
+# GPIO 15 = D8 on board
+LED_STRIP_CONTROL_PIN = 15
+
+SLEEP_MINUTES = 3
+
+NETWORK_SLEEP_SECONDS = 10
+
+PAUSE_BETWEEN_SENSING = 60 * SLEEP_MINUTES
+
+NUM_PIXELS = 30
+LIGHTS_ON = (255, 255, 255)
+LIGHTS_OFF = (0, 0, 0)
+
+
+def wifi_connect(hostname):
+    network.hostname(hostname)
     station_if = network.WLAN(network.STA_IF)
-    if not station_if.isconnected():
-        print('connecting to network...')
-        station_if.active(True)
-        station_if.connect('disconnected', secrets.password)
-        while not station_if.isconnected():
-            pass
-    print('network config:', station_if.ifconfig())
+    station_if.active(True)
+    time.sleep(NETWORK_SLEEP_SECONDS)
+    while not station_if.isconnected():
+        station_if.connect(secrets.SSID, secrets.PASSWORD)
+        time.sleep(NETWORK_SLEEP_SECONDS)
+    return True
 
 
 def handle_interrupt(pin):
@@ -32,32 +48,21 @@ def handle_interrupt(pin):
     interrupt_pin = pin
 
 
-# GPIO 0 = D3 on board
-PIN_D3 = 0
-# GPIO 14 = D5 on board
-PIN_D5 = 14
+def main():
+    led = Pin(LED_STRIP_CONTROL_PIN, Pin.OUT)
+    strip = NeoPixel(led, NUM_PIXELS)
+    strip.fill(LIGHTS_OFF)
+    strip.write()
 
-SLEEP_MINUTES = 3
-SLEEP_INTERVAL = 60 * SLEEP_MINUTES
-NUM_PIXELS = 55
-LIGHTS_ON = (255, 255, 255)
-LIGHTS_OFF = (0, 0, 0)
-led = Pin(PIN_D3, Pin.OUT)
-strip = NeoPixel(led, NUM_PIXELS)
-strip.fill(LIGHTS_OFF)
-strip.write()
+    pir = Pin(MOTION_DETECTOR_PIN, Pin.IN)
+    pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 
-pir = Pin(PIN_D5, Pin.IN)
-
-pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
-
-do_connect()
-
-while True:
-    if motion:
-        strip.fill(LIGHTS_ON)
-        strip.write()
-        sleep(SLEEP_INTERVAL)
-        strip.fill(LIGHTS_OFF)
-        strip.write()
-        motion = False
+    if wifi_connect(secrets.HOSTNAME):
+        while True:
+            if motion:
+                strip.fill(LIGHTS_ON)
+                strip.write()
+                time.sleep(PAUSE_BETWEEN_SENSING)
+                strip.fill(LIGHTS_OFF)
+                strip.write()
+                motion = False
