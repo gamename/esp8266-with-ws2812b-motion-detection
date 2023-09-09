@@ -15,10 +15,10 @@ interrupt_pin = None
 # GPIO 14 = D5 on board
 MOTION_DETECTOR_PIN = 14
 
-# GPIO 15 = D8 on board
-LED_STRIP_CONTROL_PIN = 15
+# GPIO 0 = D3 on board
+LED_STRIP_CONTROL_PIN = 0
 
-SLEEP_MINUTES = 3
+SLEEP_MINUTES = 240
 
 NETWORK_SLEEP_SECONDS = 10
 
@@ -64,4 +64,7 @@ def main():
                 time.sleep(PAUSE_BETWEEN_SENSING)
                 strip.fill(LIGHTS_OFF)
                 strip.write()
-                motion = False
+
+
+if __name__ == "__main__":
+    main()
