@@ -2,9 +2,13 @@
 #
 #
 import gc
+import sys
 import time
 
 import network
+import ntptime
+import uio
+import utime
 from machine import Pin, reset
 from neopixel import NeoPixel
 from ota import OTAUpdater
@@ -27,7 +31,7 @@ NETWORK_MAX_CONNECTION_ATTEMPTS = 10
 
 PAUSE_BETWEEN_SENSING = 60 * SLEEP_MINUTES
 
-OTA_UPDATE_GITHUB_CHECK_INTERVAL = 14400  # seconds (4 hours)
+OTA_UPDATE_GITHUB_CHECK_INTERVAL = 120  # seconds (4 hours)
 
 OTA_UPDATE_GITHUB_REPOS = {
     "gamename/esp8266-with-ws2812b-motion-detection": ["boot.py", "main.py"],
@@ -40,11 +44,37 @@ LIGHTS_ON = (255, 255, 255)
 LIGHTS_OFF = (0, 0, 0)
 
 
+def current_time_to_string():
+    """
+    Convert the current time to a human-readable string
+
+    :return: timestamp string
+    :rtype: str
+    """
+    current_time = utime.localtime()
+    year, month, day_of_month, hour, minute, second, *_ = current_time
+    return f'{year}-{month}-{day_of_month}-{hour}-{minute}-{second}'
+
+
+def log_traceback(exception):
+    """
+    Keep a log of the latest traceback
+
+    :param exception: An exception intercepted in a try/except statement
+    :type exception: exception
+    :return: Nothing
+    """
+    traceback_stream = uio.StringIO()
+    sys.print_exception(exception, traceback_stream)
+    traceback_file = current_time_to_string() + '-' + 'traceback.log'
+    with open(traceback_file, 'w') as f:
+        f.write(traceback_stream.getvalue())
+
+
 def wifi_connect(wlan):
     """
     Connect to Wi-Fi
 
-    :param: watchdog - a watchdog timer
     :param: wlan - a Wi-Fi network handle
 
     Returns:
@@ -85,6 +115,7 @@ def main():
     # Turn ON and connect the station interface
     wlan = network.WLAN(network.STA_IF)
     wifi_connect(wlan)
+    ntptime.settime()
 
     led = Pin(LED_STRIP_CONTROL_PIN, Pin.OUT)
     strip = NeoPixel(led, NUM_PIXELS)
@@ -123,4 +154,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        log_traceback(exc)
+        reset()
