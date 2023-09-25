@@ -1,21 +1,15 @@
 #
-#
+# Light the area underneath my work desk automatically
 #
 import gc
-import sys
 import time
 
 import network
-import ntptime
-import uio
-import utime
-from machine import Pin, reset
+from machine import Pin
 from neopixel import NeoPixel
-from ota import OTAUpdater
 
-import secrets
-
-motion = False
+strip = None
+motion_detected = False
 interrupt_pin = None
 
 # GPIO 14 = D5 on board
@@ -24,138 +18,59 @@ MOTION_DETECTOR_PIN = 14
 # GPIO 0 = D3 on board
 LED_STRIP_CONTROL_PIN = 0
 
-SLEEP_MINUTES = 240
-
-NETWORK_SLEEP_INTERVAL = 10
-NETWORK_MAX_CONNECTION_ATTEMPTS = 10
-
-PAUSE_BETWEEN_SENSING = 60 * SLEEP_MINUTES
-
-OTA_UPDATE_GITHUB_CHECK_INTERVAL = 120  # seconds (4 hours)
-
-OTA_UPDATE_GITHUB_REPOS = {
-    "gamename/esp8266-with-ws2812b-motion-detection": ["boot.py", "main.py"],
-    "gamename/micropython-over-the-air-utility": ["ota.py"]
-}
-
-
 NUM_PIXELS = 30
 LIGHTS_ON = (255, 255, 255)
 LIGHTS_OFF = (0, 0, 0)
 
 
-def current_time_to_string():
-    """
-    Convert the current time to a human-readable string
-
-    :return: timestamp string
-    :rtype: str
-    """
-    current_time = utime.localtime()
-    year, month, day_of_month, hour, minute, second, *_ = current_time
-    return f'{year}-{month}-{day_of_month}-{hour}-{minute}-{second}'
+def turn_lights_on(duration_hours=1):
+    strip.fill(LIGHTS_ON)
+    strip.write()
+    sleep_seconds = 60 * duration_hours
+    time.sleep(sleep_seconds)
 
 
-def log_traceback(exception):
-    """
-    Keep a log of the latest traceback
-
-    :param exception: An exception intercepted in a try/except statement
-    :type exception: exception
-    :return: Nothing
-    """
-    traceback_stream = uio.StringIO()
-    sys.print_exception(exception, traceback_stream)
-    traceback_file = current_time_to_string() + '-' + 'traceback.log'
-    with open(traceback_file, 'w') as f:
-        f.write(traceback_stream.getvalue())
-
-
-def wifi_connect(wlan):
-    """
-    Connect to Wi-Fi
-
-    :param: wlan - a Wi-Fi network handle
-
-    Returns:
-        Nothing
-    """
-    print("WIFI: Attempting network connection")
-    wlan.active(True)
-    time.sleep(NETWORK_SLEEP_INTERVAL)
-    counter = 0
-    wlan.connect(secrets.SSID, secrets.PASSWORD)
-    while not wlan.isconnected():
-        print(f'WIFI: Attempt: {counter}')
-        time.sleep(NETWORK_SLEEP_INTERVAL)
-        counter += 1
-        if counter > NETWORK_MAX_CONNECTION_ATTEMPTS:
-            print("WIFI: Network connection attempts exceeded. Restarting")
-            time.sleep(1)
-            reset()
-    print("WIFI: Successfully connected to network")
-
+def turn_lights_off():
+    strip.fill(LIGHTS_OFF)
+    strip.write()
 
 def handle_interrupt(pin):
-    global motion
-    motion = True
+    global motion_detected
+    motion_detected = True
     global interrupt_pin
     interrupt_pin = pin
 
 
 def main():
     #
-    # Set up a timer to force reboot on system hang
-    network.hostname(secrets.HOSTNAME)
-    #
     # Turn OFF the access point interface
     ap_if = network.WLAN(network.AP_IF)
     ap_if.active(False)
+
     #
-    # Turn ON and connect the station interface
-    wlan = network.WLAN(network.STA_IF)
-    wifi_connect(wlan)
-    ntptime.settime()
+    # Turn OFF the station interface
+    st_if = network.WLAN(network.STA_IF)
+    st_if.active(False)
 
     led = Pin(LED_STRIP_CONTROL_PIN, Pin.OUT)
+
+    global strip
     strip = NeoPixel(led, NUM_PIXELS)
-    strip.fill(LIGHTS_OFF)
-    strip.write()
+
+    turn_lights_off()
 
     pir = Pin(MOTION_DETECTOR_PIN, Pin.IN)
     pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 
-    ota_updater = OTAUpdater(secrets.GITHUB_USER,
-                             secrets.GITHUB_TOKEN,
-                             OTA_UPDATE_GITHUB_REPOS)
-    ota_timer = time.time()
     while True:
-        if motion:
-            strip.fill(LIGHTS_ON)
-            strip.write()
-            time.sleep(PAUSE_BETWEEN_SENSING)
-            strip.fill(LIGHTS_OFF)
-            strip.write()
-
-        ota_elapsed = int(time.time() - ota_timer)
-        if ota_elapsed > OTA_UPDATE_GITHUB_CHECK_INTERVAL:
+        if motion_detected:
+            turn_lights_on(duration_hours=4)
+            turn_lights_off()
             #
-            # The update process is memory intensive, so make sure
-            # we have all the resources we need.
+            # Make sure we do not generate mem leaks over time
             gc.collect()
-            # micropython.mem_info()
-            if ota_updater.updated():
-                print("MAIN: Restarting device after update")
-                time.sleep(1)  # Gives the system time to print the above msg
-                reset()
-            ota_timer = time.time()
-
 
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as exc:
-        log_traceback(exc)
-        reset()
+    main()
