@@ -1,5 +1,5 @@
 #
-# Light the area underneath my work desk automatically
+# Automatically light the area under my work desk
 #
 import gc
 import time
