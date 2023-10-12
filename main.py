@@ -1,16 +1,14 @@
 #
 # Automatically light the area under my work desk
 #
-import gc
 import time
 
 import network
-from machine import Pin
+import ntptime
+from machine import Pin, reset
 from neopixel import NeoPixel
 
-strip = None
-motion_detected = False
-interrupt_pin = None
+import secrets
 
 # GPIO 14 = D5 on board
 MOTION_DETECTOR_PIN = 14
@@ -22,35 +20,72 @@ NUM_PIXELS = 30
 LIGHTS_ON = (255, 255, 255)
 LIGHTS_OFF = (0, 0, 0)
 
+FOUR_HOURS = 4 * 3600  # in seconds
 
-def turn_lights_on(duration_hours=1):
+
+def wifi_connect(wlan, ssid, password, connection_attempts=10, sleep_seconds_interval=3):
+    """
+    Start a Wi-Fi connection
+
+    :param wlan: A network handle
+    :type wlan: network.WLAN
+    :param ssid: Wi-Fi SSID
+    :type ssid: str
+    :param password: Wi-Fi password
+    :type password: str
+    :param connection_attempts: How many times should we attempt to connect?
+    :type connection_attempts: int
+    :param sleep_seconds_interval: Sleep time between attempts
+    :type sleep_seconds_interval: int
+    :return: Nothing
+    :rtype: None
+    """
+    print("WIFI: Attempting network connection")
+    wlan.active(True)
+    time.sleep(sleep_seconds_interval)
+    counter = 1
+    wlan.connect(ssid, password)
+    while not wlan.isconnected():
+        print(f'WIFI: Attempt {counter} of {connection_attempts}')
+        time.sleep(sleep_seconds_interval)
+        counter += 1
+        if counter > connection_attempts:
+            print("WIFI: Max connection attempts exceeded. Resetting microcontroller")
+            time.sleep(0.5)
+            reset()
+    print("WIFI: Successfully connected to network")
+
+
+def turn_lights_on():
     strip.fill(LIGHTS_ON)
     strip.write()
-    sleep_seconds = 60 * duration_hours
-    time.sleep(sleep_seconds)
 
 
 def turn_lights_off():
     strip.fill(LIGHTS_OFF)
     strip.write()
 
-def handle_interrupt(pin):
-    global motion_detected
-    motion_detected = True
-    global interrupt_pin
-    interrupt_pin = pin
-
 
 def main():
+    print("MAIN: Set Hostname.")
+    network.hostname(secrets.HOSTNAME)
     #
-    # Turn OFF the access point interface
+    print("MAIN: Turn OFF the access point interface")
     ap_if = network.WLAN(network.AP_IF)
     ap_if.active(False)
-
     #
-    # Turn OFF the station interface
-    st_if = network.WLAN(network.STA_IF)
-    st_if.active(False)
+    print("MAIN: Turn ON and connect the station interface")
+    wlan = network.WLAN(network.STA_IF)
+    wifi_connect(wlan, secrets.SSID, secrets.PASSWORD)
+
+    print("MAIN: Sync system time with NTP")
+    try:
+        ntptime.settime()
+        print("MAIN: System time set successfully.")
+    except Exception as e:
+        print(f"MAIN: Error setting system time: {e}")
+        time.sleep(0.5)
+        reset()
 
     led = Pin(LED_STRIP_CONTROL_PIN, Pin.OUT)
 
@@ -60,16 +95,29 @@ def main():
     turn_lights_off()
 
     pir = Pin(MOTION_DETECTOR_PIN, Pin.IN)
-    pir.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 
+    start_time = None
+
+    print("MAIN: Starting event loop")
     while True:
-        if motion_detected:
-            turn_lights_on(duration_hours=4)
-            turn_lights_off()
-            #
-            # Make sure we do not generate mem leaks over time
-            gc.collect()
+        motion_detected = bool(pir.value())
 
+        if motion_detected and not start_time:
+            print("MAIN: Record the start time when motion is first detected")
+            start_time = time.time()
+
+            print("MAIN: Turn on the LED strip")
+            turn_lights_on()
+        elif start_time and time.time() - start_time >= FOUR_HOURS:
+            print("MAIN: Time is up.  Reset start time.")
+            start_time = None
+            turn_lights_off()
+
+        if not wlan.isconnected():
+            print("MAIN: Restart network connection")
+            wifi_connect(wlan, secrets.SSID, secrets.PASSWORD)
+
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
