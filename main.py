@@ -1,6 +1,6 @@
-#
-# Automatically light the area under my work desk
-#
+"""
+Turn on lights under my desk
+"""
 import time
 
 import network
