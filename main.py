@@ -56,16 +56,6 @@ def wifi_connect(wlan, ssid, password, connection_attempts=10, sleep_seconds_int
     print("WIFI: Successfully connected to network")
 
 
-def turn_lights_on():
-    strip.fill(LIGHTS_ON)
-    strip.write()
-
-
-def turn_lights_off():
-    strip.fill(LIGHTS_OFF)
-    strip.write()
-
-
 def main():
     print("MAIN: Set Hostname.")
     network.hostname(secrets.HOSTNAME)
@@ -89,10 +79,9 @@ def main():
 
     led = Pin(LED_STRIP_CONTROL_PIN, Pin.OUT)
 
-    global strip
     strip = NeoPixel(led, NUM_PIXELS)
-
-    turn_lights_off()
+    strip.fill(LIGHTS_OFF)
+    strip.write()
 
     pir = Pin(MOTION_DETECTOR_PIN, Pin.IN)
 
@@ -107,11 +96,16 @@ def main():
             start_time = time.time()
 
             print("MAIN: Turn on the LED strip")
-            turn_lights_on()
+            strip.fill(LIGHTS_ON)
+            strip.write()
+
         elif start_time and time.time() - start_time >= FOUR_HOURS:
             print("MAIN: Time is up.  Reset start time.")
             start_time = None
-            turn_lights_off()
+
+            print("MAIN: Turn lights off")
+            strip.fill(LIGHTS_OFF)
+            strip.write()
 
         if not wlan.isconnected():
             print("MAIN: Restart network connection")
